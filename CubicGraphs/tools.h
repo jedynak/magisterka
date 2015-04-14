@@ -1,10 +1,12 @@
 
 	static const int NUMBER_OF_NEIGHBOURS=3;
 	static const int BASE_SIZE=4;
+
+	//these consts you can change
 	static const int MIN_VERTEX_NUMBER=10;
-	static const int MAX_VERTEX_NUMBER=30;
-	static const int NUMBER_OF_GRAPH=100000;
-	static const int INCREASE_NUMBER_OF_VERTICES=2;
+	static const int MAX_VERTEX_NUMBER=120;
+	static const int NUMBER_OF_GRAPH=1000000;
+	static const int INCREASE_NUMBER_OF_VERTICES=10;
 
 	void deleteSet(int **graph, int **limitedGraph, int numberOfVertices, int *solution);
 	void printGraph(int **graph, int numberOfVertices, int *solution);

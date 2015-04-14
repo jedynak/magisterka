@@ -12,14 +12,12 @@
 #include "tools.h"
 
 using namespace std;
-/*
-int main(){
+
+void testQubicGraphs(){
 
 	int **graph = new int*[MAX_VERTEX_NUMBER];
-	int **limitedGraph = new int*[MAX_VERTEX_NUMBER];
 	for(int h=0; h<MAX_VERTEX_NUMBER; ++h){
 			graph[h] = new int[NUMBER_OF_NEIGHBOURS];
-			limitedGraph[h] = new int[NUMBER_OF_NEIGHBOURS];
 	}
 	int *solution;
 	int ratio;
@@ -45,18 +43,17 @@ int main(){
 				if(solution[h]==1)++independentSetSize;
 			}
 
-			deleteSet(graph,limitedGraph,i,solution);
-			if(IsBipartite(limitedGraph,i)==0){
-				isBipartite=0;
-			}
-			ratio = (independentSetSize*100/i);
+			//deleteSet(graph,limitedGraph,i,solution);
+			isBipartite = IsBipartite(graph,i,solution);
+		
+			ratio = ((float)(independentSetSize*100)/(float)i);
 			if(ratio>=40){
 				++hasSet40;
 			}
 			if(isBipartite==0){
 				++doBipartite;
 			}
-			if(isBipartite==0&&ratio>40){
+			if(isBipartite==0&&ratio>=40){
 				//cout<<i<<" vertices ratio: "<<ratio<<"% set size:"<<independentSetSize<<"*\n";
 				++foundNotBipartite;
 				//printGraph(graph,i,solution);
@@ -65,7 +62,7 @@ int main(){
 				//cout<<i<<" vertices ratio: "<<ratio<<"% set size:"<<independentSetSize<<"\n";
 			}
 		}
-		cout<<i<<" "<<foundNotBipartite<<" "<<hasSet40<<" "<<doBipartite<<endl;
+		cout<<i<<" notBiparite, ratio>=40 : "<<foundNotBipartite<<" hasSet40+: "<<hasSet40<<" not biparitize: "<<doBipartite<<endl;
 	}
 	//cout<<"found "<<foundNotBipartite<<" not bipartite graphs\n";
 	for(int h=0; h<NUMBER_OF_NEIGHBOURS; ++h){
@@ -73,5 +70,4 @@ int main(){
 	}
 	delete []solution;
 	delete []graph;
-	return 0;
-}*/
+}

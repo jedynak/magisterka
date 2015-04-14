@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 using namespace std;
-
+/*
 void deleteSet(int **graph,int **limitedGraph, int numberOfVertices,int *solution){
 	int neigbour;
 	int count=0;
@@ -24,7 +24,7 @@ void deleteSet(int **graph,int **limitedGraph, int numberOfVertices,int *solutio
 			}
 		}
 	}
-}
+}*/
 
 void printGraph(int **graph, int numberOfVertices, int *solution){
 	ofstream myfile;

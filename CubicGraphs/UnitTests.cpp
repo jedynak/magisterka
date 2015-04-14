@@ -1,4 +1,11 @@
 //#include <cppunit>
+#include "tools.h"
+#include <time.h>
+#include "CubicGraphGenerator.h"
+#include "Halldorsson.h"
+#include <iostream>
+#include "IsBipartite.h"
+#include "BicubicScheduler.h"
 
 void func(){
 	int graph1[10][3] = {
@@ -51,4 +58,49 @@ void func(){
 	};
 	int independentSet3[20]={0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1};
 
+}
+
+void testBiQubicGraphs(){
+
+	int **graph = new int*[MAX_VERTEX_NUMBER];
+	for(int h=0; h<MAX_VERTEX_NUMBER; ++h){
+			graph[h] = new int[NUMBER_OF_NEIGHBOURS];
+	}
+	int *solution;
+	int ratio;
+	int foundNotBipartite=0;
+	srand(time( NULL ));
+	solution = new int[MAX_VERTEX_NUMBER];
+	int independentSetSize;
+	bool isBipartite;
+	
+	int graphNum=NUMBER_OF_GRAPH;
+
+	for(int i=MIN_VERTEX_NUMBER;i<=MAX_VERTEX_NUMBER;i+=INCREASE_NUMBER_OF_VERTICES){
+		for(int j=0;j<graphNum;++j){
+			isBipartite = true;
+			generateCubicGraph(graph, i);
+			Halldorsson(graph, i, solution);
+			independentSetSize=0;
+			for(int h=0; h<i; ++h){
+				if(solution[h]==1)++independentSetSize;
+			}
+
+			isBipartite = IsBipartite(graph,i,solution);
+		
+			if(isBipartite == true){
+				BicubicScheduler scheduler(graph, i);
+				float a = rand()/10000.0;
+				float b = rand()/10000.0;
+				float c = rand()/10000.0;
+				std::cout<<"Speeds "<<a<<" "<<b<<" "<<c<<std::endl;
+				scheduler.bicubicScheduling(a, b, c);
+			}
+		}
+	}
+	for(int h=0; h<NUMBER_OF_NEIGHBOURS; ++h){
+		delete [] graph[h];
+	}
+	delete []solution;
+	delete []graph;
 }

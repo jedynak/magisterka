@@ -1,168 +1,180 @@
 #include <math.h>
 #include <deque>
+#include <iostream>
 #include "DecyclingAlgorithm.h"
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
 
 int numberOfVertices;
 
-bool decyclingAlogorithm(int **graph, int *independentSet, int _numberOfVertices){
-	numberOfVertices = _numberOfVertices;
+void copySets(int *fromSet, int *toSet, int size){
+	for(int i=0;i<size;++i){
+		toSet[i] = fromSet[i];
+	}
+}
+
+int checkIfCycleWasDeleted(int **graph, int *independentSet,std::list<int>::iterator it){
+	int vertex = *it;
+	int prevVertex = vertex;
+	do{
+		int j;
+		for(j=0;j<NUMBER_OF_NEIGHBOURS;++j){
+			int tmpVertex = graph[vertex][j];
+			if(independentSet[tmpVertex]==0 && tmpVertex != prevVertex){
+				prevVertex = vertex;
+				vertex = tmpVertex;
+				break;
+			}
+		}
+		if (j == NUMBER_OF_NEIGHBOURS){
+			return true;
+		}
+	} while(vertex != *it);
+	return false;
+}
+
+bool decyclingAlogorithm(int **graph, int *independentSet){
 	int *freeAndPseudoFreeVertices = new int[numberOfVertices];
-	int *cycle = new int[numberOfVertices];
 	int *newIndependentSet = new int[numberOfVertices];
 	for(int i=0;i<numberOfVertices;++i){
 		freeAndPseudoFreeVertices[i]=VertexFreedom::NOT_FREE_VERTEX;
 	}
-	if(findCycle(cycle,graph,independentSet)==false){
+	int *cycle = findAnyOddCycle(graph,independentSet);
+	if(cycle == NULL){
 		return true;
 	}
 	bool solutionFound=false;
+	//if vertex in cycle has only neighbours outside independent set -> solution found
 	for(int i=0;i<numberOfVertices;++i){
 		int degree = 0;
 		if(cycle[i]==1){
 			for(int j=0;j<NUMBER_OF_NEIGHBOURS;++j){
-				if(independentSet[graph[i][j]]==0)++degree;
+				if(independentSet[graph[i][j]]==0){
+					++degree;
+				}
 			}
-			if(degree>=NUMBER_OF_NEIGHBOURS){
+			if(degree==NUMBER_OF_NEIGHBOURS){
 				independentSet[i] = 1;
 				solutionFound = true;
 			}
 		}
 	}
-	if(solutionFound==false){
+	if(solutionFound == false){
 		findFreeVertices(graph, independentSet, freeAndPseudoFreeVertices);
 		findPseudoFreeVerticles(graph, independentSet, freeAndPseudoFreeVertices);
 
-		bool deletedCycle = false;
 		std::list<int> *path;
-		path = createPath(graph, cycle, independentSet, freeAndPseudoFreeVertices); // TO DO
+		//create initial path
+		path = createPath(graph, cycle, independentSet, freeAndPseudoFreeVertices); 
 
 		int in=0;
-		int out = alternatingPath(path, independentSet, graph, in);
-			
+		int out = 0;
+		bool deletedCycle = alternatingPath(path, independentSet, graph, in, out);
 		createNewIndependentSet(path, freeAndPseudoFreeVertices, independentSet, newIndependentSet, graph, in, out);
+		if( deletedCycle == false){
+			deletedCycle = checkIfCycleWasDeleted(graph,newIndependentSet,std::next(path->begin(),out-1));
+		}
 		while(!deletedCycle){
-			for(int i=0;i<numberOfVertices;++i){
-				independentSet[i] = newIndependentSet[i];
-			}
+			copySets(newIndependentSet,independentSet,numberOfVertices);
 			in = out;
 			deletedCycle = nonAlternatingPath(in, out, path, freeAndPseudoFreeVertices, independentSet, newIndependentSet, graph);
 		}
+		copySets(newIndependentSet,independentSet,numberOfVertices);
 	}
 	//delete path
 	return false;
 }
-/*
-std::list<int> * createPath(int **graph, int *cycle, int *independentSet, int *freeAndPseudoFreeVertices){
-	std::list<int> *path = new std::list<int>();
-	int *usedVertices = new int[numberOfVertices];
-	for( int i=0;i<numberOfVertices;++i){
-		usedVertices[i]=0;
-	}
-	bool solutionFound=false;
-	for( int i=0;i<numberOfVertices;++i){
-		if(cycle[i]==1){
-			std::queue<std::list<int>* > Q;
-			std::list<int> *firstPath = new std::list<int>();
-			usedVertices[cycle[i]]=1;
-			firstPath->push_back(cycle[i]);
-			Q.push(firstPath);
-			int usedVerticesNumber=1;
-			while(usedVerticesNumber<numberOfVertices){
-				path = Q.front();
-				Q.pop();
-				for(int i=0;i<NUMBER_OF_NEIGHBOURS;++i){
-					int vertex = graph[path->back()][i];
-					if(freeAndPseudoFreeVertices[vertex]==1){
-						solutionFound=true;
-						while(!Q.empty()){
-							delete Q.front();
-							Q.pop();
-						}
-					} else if(usedVertices[vertex]==0){
-						usedVertices[vertex] = 1;
-						std::list<int> *newPath = new std::list<int>(path->begin(),path->end());
-						newPath->push_back(vertex);
-						Q.push(newPath);
-					}
-				}
-				delete path;
-			}
-			if(solutionFound==true){
-				break;
-			}
-		}
-	}
-	return path;
-}*/
-std::list<int> * createPath(int **graph, int *cycle, int *independentSet, int *freeAndPseudoFreeVertices){
-	std::list<int> *path = new std::list<int>();
-	int *usedVertices = new int[numberOfVertices];
-	for( int i=0;i<numberOfVertices;++i){
-		usedVertices[i]=0;
-	}
-	for( int i=0;i<numberOfVertices;++i){
-		if(cycle[i]==1){
-			if(findPathToFreeVerticle(graph, freeAndPseudoFreeVertices, path, usedVertices, i)){
-				return path;
-			}
-		}
-	}
-	return path;
-}
-bool findPathToFreeVerticle(int **graph, int *freeAndPseudoFreeVertices, std::list<int> *path, int *usedVertices, int vertex){
-	path->push_back(vertex);
+
+int createPathEndingWithFreeVertex(int **graph, std::list<int> *path,int *usedVertices, int *freeAndPseudoFreeVertices, int currentVertex){
 	for(int i=0;i<NUMBER_OF_NEIGHBOURS;++i){
-		int neighbour = graph[vertex][i];
-		if(usedVertices[neighbour]==0){
-			if(freeAndPseudoFreeVertices[neighbour]==0){
-				if(findPathToFreeVerticle(graph, freeAndPseudoFreeVertices, path, usedVertices, neighbour)){
-					return true;
-				}
+		int vertex = graph[currentVertex][i]; 
+		if(usedVertices[vertex]==0){
+			usedVertices[vertex]=1;
+			path->push_back(vertex);
+			if(freeAndPseudoFreeVertices[vertex]>0){
+				return 1;
+			}
+			if(createPathEndingWithFreeVertex(graph,path,usedVertices,freeAndPseudoFreeVertices, vertex)==1){
+				return 1;
 			} else {
-				if(path->size()>1){
-					path->push_back(neighbour);
-					return true;
-				}
+				path->pop_back();
 			}
 		}
 	}
-	usedVertices[vertex]=1;
-	path->pop_back();
-	return false;
+	return 0;
 }
 
-bool findIfCycle(int **graph, int *independentSet,int destinationVertex,int *usedVertices,int currentVertex){
-	const int NOT_IN_PATH=0;
-	const int IN_PATH=1;
-	usedVertices[currentVertex]=IN_PATH;
-	for(int j=0;j<NUMBER_OF_NEIGHBOURS;++j){
-		if(graph[currentVertex][j]==destinationVertex)return true;
-		if(independentSet[currentVertex]==0&&usedVertices[j]==NOT_IN_PATH){
-			if(findIfCycle(graph,independentSet,destinationVertex,usedVertices,j)==true)return true;
-			usedVertices[j]=NOT_IN_PATH;
+std::list<int> * createPath(int **graph, int *cycle, int *independentSet, int *freeAndPseudoFreeVertices){
+	std::list<int> *path = new std::list<int>();
+	int *usedVertices = new int[numberOfVertices];
+	for( int i=0;i<numberOfVertices;++i){
+		usedVertices[i]=0;
+	}
+	int startVertex=-1;
+	for(int i=0;i<numberOfVertices;++i){
+		if(cycle[i]==1){
+			if(startVertex == -1){
+				startVertex=i;
+			}
+			usedVertices[i]=1;
 		}
 	}
+	path->push_back(startVertex);
+	createPathEndingWithFreeVertex(graph,path,usedVertices,freeAndPseudoFreeVertices, startVertex);
+	return path;
+}
+
+int findPathBetweenVertices(int **graph, int *independentSet, int *usedVertices,int prevVertex, int destination,int pathLength){
+	++pathLength;
+	for(int j=0;j<NUMBER_OF_NEIGHBOURS;++j){
+		int tmpVertex = graph[prevVertex][j];
+		if(tmpVertex == destination){
+			return pathLength;
+		}
+		if(independentSet[tmpVertex]==0 && usedVertices[tmpVertex]==0){
+			usedVertices[tmpVertex]=1;
+			int tmpPathLength = findPathBetweenVertices(graph,independentSet,usedVertices,tmpVertex,destination, pathLength);
+			if(tmpPathLength%2==1){
+				return tmpPathLength;
+			}
+		}
+	}
+	return 0;
+}
+
+bool findIfCycle(int **graph, int *independentSet, int independentVertex){
+	int *usedVertices;
+	usedVertices = new int[numberOfVertices];
+	for(int j=0;j<NUMBER_OF_NEIGHBOURS;++j){
+		int firstVertex = graph[independentVertex][j];
+		int secondVertex = graph[independentVertex][(j+1)%NUMBER_OF_NEIGHBOURS];
+		if( independentSet[firstVertex]==0 && independentSet[secondVertex]==0){
+			for( int i=0;i<numberOfVertices;++i){
+				usedVertices[i]=0;
+			}
+			usedVertices[firstVertex]=1;
+			int pathLenght=findPathBetweenVertices(graph,independentSet,usedVertices,firstVertex,secondVertex,0);
+			if (pathLenght%2==1){
+				//delete usedVertices;
+				return true;
+			}
+		}
+	}
+	//delete usedVertices;
 	return false;
 }
 
 void findFreeVertices(int **graph, int *independentSet,int *freeAndPseudoFreeVertices){
 	const int NOT_IN_PATH=0;
 	const int IN_PATH=1;
-	int *usedVertices;
-	usedVertices = new int[numberOfVertices];
 	for(int i=0;i<numberOfVertices;++i){
 		if(independentSet[i]==1){
-			for(int j=0;j<NUMBER_OF_NEIGHBOURS;++j){
-				for(int k=0;k<numberOfVertices;++k){
-					usedVertices[k] = NOT_IN_PATH;
-				}
-				if(!findIfCycle(graph,independentSet,(j+1)%NUMBER_OF_NEIGHBOURS,usedVertices,j)){
-					freeAndPseudoFreeVertices[i]=VertexFreedom::FREE_VERTEX;
-				}
+			if(!findIfCycle(graph,independentSet,i)){
+				freeAndPseudoFreeVertices[i]=VertexFreedom::FREE_VERTEX;
 			}
 		}
 	}
-	delete []usedVertices;
 }
 
 void findPseudoFreeVerticles(int **graph, int *independentSet,int *freeAndPseudoFreeVertices){
@@ -241,8 +253,9 @@ void findPseudoFreeVerticlesType2(int **graph, int *independentSet,int *freeAndP
 	}
 }
 
-int alternatingPath(std::list<int> *path, int *independentSet, int**graph,int num){
+bool alternatingPath(std::list<int> *path, int *independentSet, int**graph,int num, int &out){
 	std::list<int>::iterator it=path->begin();
+	bool retVal = false;
 	while(it!=path->end()){
 		if(num<path->size()-1){
 			++num;
@@ -253,6 +266,8 @@ int alternatingPath(std::list<int> *path, int *independentSet, int**graph,int nu
 			break;
 		}
 		if(num==path->size()-1){
+			++num;
+			retVal = true;
 			break;
 		}
 		++num;
@@ -261,9 +276,12 @@ int alternatingPath(std::list<int> *path, int *independentSet, int**graph,int nu
 		for(int k=0;k<NUMBER_OF_NEIGHBOURS;++k){
 			if(independentSet[graph[*it][k]]==1)++independentNeighbours;
 		}
-		if(independentSet[independentNeighbours]==NUMBER_OF_NEIGHBOURS)break;
+		if(independentSet[independentNeighbours]==NUMBER_OF_NEIGHBOURS){
+			break;
+		}
 	}
-	return num;
+	out = num;
+	return retVal;
 }
 
 void createNewIndependentSet(std::list<int> *path,int* freeAndPseudoFreeVertices, int *independentSet, int *newIndependentSet, int**graph,int in,int out){
@@ -302,10 +320,15 @@ void createNewIndependentSet(std::list<int> *path,int* freeAndPseudoFreeVertices
 
 bool nonAlternatingPath(int in,int &out,std::list<int> *path,int* freeAndPseudoFreeVertices , int *independentSet, int *newIndependentSet, int**graph){
 	bool deletedCycle = true;
-	int * cycle=new int[numberOfVertices];
-	findCycle(cycle,graph,independentSet);
+	std::list<int>::iterator it = std::next(path->begin(),in-1);
+	std::list<int>::iterator it2 = std::next(path->begin(),in);
+	int * cycle = findCycle(graph,independentSet,*it,*it2);
 	int numOfNeighbours;
 	int i=0;
+	if(cycle == NULL){
+		return true;
+	}
+		std::cout<<"a"<<independentSet[19]<<" ";
 	while(i<numberOfVertices){
 		numOfNeighbours=0;
 		if(cycle[i]==1){
@@ -320,12 +343,15 @@ bool nonAlternatingPath(int in,int &out,std::list<int> *path,int* freeAndPseudoF
 		}
 		++i;
 	}
+		std::cout<<"m"<<independentSet[19]<<" ";
 	if(numOfNeighbours==NUMBER_OF_NEIGHBOURS){
 		independentSet[i]=1;
 		out = (int)distance(path->begin(),path->end());
 		deletedCycle = true;  
+		std::cout<<"l"<<independentSet[19]<<" ";
 	}else{
-		std::list<int>::iterator it = std::next(path->begin(),in+1);
+		std::cout<<"k"<<independentSet[19]<<" ";
+		it = std::next(path->begin(),in+1);
 		while(it!=path->end()){
 			if(cycle[*it]==0){
 				break;
@@ -333,6 +359,7 @@ bool nonAlternatingPath(int in,int &out,std::list<int> *path,int* freeAndPseudoF
 				++it;
 			}
 		}
+		std::cout<<"j"<<independentSet[19]<<" ";
 		int i=*it;
 		if(independentSet[i]==1){
 			out = std::distance(path->begin(),it)-1;
@@ -340,13 +367,17 @@ bool nonAlternatingPath(int in,int &out,std::list<int> *path,int* freeAndPseudoF
 				newIndependentSet[i] = independentSet[i];
 			}
 			deletedCycle = false; 
+		std::cout<<"i"<<independentSet[19]<<" ";
 		}else{
 			std::list<int> tmpPath(next(path->begin(),in+1),path->end());
+		std::cout<<"h"<<independentSet[19]<<" ";
 			setIndependentSet(tmpPath,freeAndPseudoFreeVertices, independentSet, newIndependentSet,graph);
+		std::cout<<"g"<<independentSet[19]<<" ";
 			out = i;
 		}
 	}
-	delete cycle;
+		std::cout<<"f"<<independentSet[19]<<" ";
+	//delete cycle;
 	return deletedCycle;
 }
 
@@ -423,44 +454,68 @@ void setIndependentSet(std::list<int> &path,int* freeAndPseudoFreeVertices, int 
 
 }
 
-bool findCycle(int *cycle, int **graph,int *independentSet){
-	int *checkedVertices=new int(numberOfVertices);
-	for(int i=0;i<numberOfVertices;++i){
-		checkedVertices[i]=independentSet[i];
-		cycle[i]=0;
-	}
-	std::deque<int> *verticeStack = new std::deque<int>();
-	for(int i=0;i<numberOfVertices;++i){
-		if(checkedVertices[i]==0){
-			if(hasCycle(graph,independentSet,verticeStack,checkedVertices,cycle,i)){
-				//delete checkedVertices;
-				return true;
+int *findAnyOddCycle(int **graph,int *independentSet){
+	for(int j=0;j<numberOfVertices;++j){
+		for(int i=0;i<NUMBER_OF_NEIGHBOURS;++i){
+			int tmpVertex = graph[j][i];
+			if(tmpVertex > j ){ //to prevent checking pair of vertices twice
+				if(independentSet[j] == 0 && independentSet[tmpVertex] == 0){
+					int *cycle = findCycle(graph,independentSet, j, tmpVertex);
+					if(cycle != NULL){
+						return cycle;
+					}
+				}
 			}
 		}
 	}
-	//delete checkedVertices;
-	return false;
+	return NULL;
 }
 
-bool hasCycle(int **graph,int *independentSet, std::deque<int> *verticeStack, int *checkedVertices, int *cycle, int vertex){
-	verticeStack->push_back(vertex);
+int* findCycle(int **graph,int *independentSet, int v1, int v2){
+	int *cycle=new int[numberOfVertices];
+	int *usedVertices=new int[numberOfVertices];
+	for(int i=0;i<numberOfVertices-2;++i){
+		usedVertices[i]=independentSet[i];
+		cycle[i]=0;
+	}
+	cycle[v1]=1;
+	cycle[v2]=1;
+	usedVertices[v1]=1;
+	usedVertices[v2]=1;
 	for(int i=0;i<NUMBER_OF_NEIGHBOURS;++i){
-		int neighbour = graph[vertex][i];
-		std::deque<int>::iterator it=std::find(verticeStack->begin(), verticeStack->end(), neighbour);
-		int distance = std::distance(it,verticeStack->end());
-		if(distance>2){
-			for(;it!=verticeStack->end();++it){
-				cycle[*it]=1;
+		int tmpVertex = graph[v1][i];
+		if( usedVertices[tmpVertex] == 0){
+			usedVertices[tmpVertex]=1;
+			cycle[tmpVertex]=1;
+			if(hasOddCycle(graph,usedVertices,cycle,v1, tmpVertex, v2, 3)){
+				delete[] usedVertices;
+				return cycle;
 			}
+			usedVertices[tmpVertex]=0;
+			cycle[tmpVertex]=0;
+		}
+	}
+	delete[] usedVertices;
+	delete[] cycle;
+	return NULL;
+}
+
+bool hasOddCycle(int **graph, int *usedVertices, int *cycle, int prevVertex, int currVertex, int destVertex, int cycleLenght){
+	for(int i=0;i<NUMBER_OF_NEIGHBOURS;++i){
+		int tmpVertex = graph[currVertex][i];
+		if(tmpVertex == destVertex && cycleLenght % 2 == 1){
 			return true;
 		}
-		if(independentSet[neighbour]==0&&checkedVertices[neighbour]==0&&distance!=2){
-			if(hasCycle(graph, independentSet, verticeStack, checkedVertices, cycle, neighbour)){
+		if(usedVertices[tmpVertex] == 0){
+			cycle[tmpVertex]=1;
+			usedVertices[tmpVertex]=1;
+			if(hasOddCycle(graph,usedVertices,cycle, currVertex, tmpVertex, destVertex, cycleLenght+1)){
 				return true;
+			} else {
+				cycle[tmpVertex]=0;
+				usedVertices[tmpVertex]=0;
 			}
 		}
 	}
-	checkedVertices[vertex]=1;
-	verticeStack->pop_back();
 	return false;
 }
